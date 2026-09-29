@@ -1,0 +1,13 @@
+# SHEETAL PROTOTYPE TEST LOGGING MATRIX
+# STATUS: NO EXPERIMENTAL MEASUREMENTS RECORDED YET
+# This sheet defines the schema for recording experimental validation trials during Stage 9 physical commissioning.
+# Do not add fabricated data. Log entries only when verified by physical instrumentation.
+test_id,timestamp_utc,test_description,ambient_temp_c,storage_temp_ds18b20_c,ambient_dht_temp_c,chamber_rh_pct,system_voltage_v,current_ma,power_mw,compressor_state,pcm_state,pass_fail_status,notes
+TEST-01,,Empty chamber pull-down (30C to 10C),,,,,,,,,Planned,Requires physical chamber
+TEST-02,,Spatial temperature uniformity (T1-T3),,,,,,,,,Planned,Requires 3-point probe
+TEST-03,,Step-load response (50kg load),,,,,,,,,Planned,Requires batch loading
+TEST-04,,Full 200kg design pull-down,,,,,Planned,Requires 200kg tomatoes
+TEST-05,,Door infiltration recovery (30s open),,,,,,,,,Planned,Requires reed switch logging
+TEST-06,,PCM latent freeze charge cycle,,,,,,,,,Planned,Requires T4 probe on PCM
+TEST-07,,Thermal holdover power-failure run,,,,,,,,,Planned,Requires 24h temperature log
+TEST-08,,24-hour off-grid autonomous solar run,,,,,,,,,Planned,Requires PV+Battery test

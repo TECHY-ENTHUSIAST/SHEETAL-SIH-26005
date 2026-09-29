@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PCM Cold-Store Monitor · SIH 26005</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0d1117;
+      --surface: #161b22;
+      --border:  #30363d;
+      --text:    #e6edf3;
+      --muted:   #8b949e;
+      --green:   #3fb950;
+      --yellow:  #d29922;
+      --orange:  #f0883e;
+      --red:     #f85149;
+      --blue:    #58a6ff;
+      --cyan:    #79c0ff;
+      --purple:  #a371f7;
+      --radius:  12px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Top Bar ──────────────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 16px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-icon { font-size: 1.4rem; }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    #conn-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      font-weight: 600;
+    }
+    #conn-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.4s;
+    }
+    #conn-dot.connected    { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    #conn-dot.disconnected { background: var(--red);   box-shadow: 0 0 8px var(--red); }
+
+    /* IP Config */
+    .ip-group {
+      display: flex; gap: 6px; align-items: center;
+    }
+    .ip-group label { font-size: 0.78rem; color: var(--muted); }
+    .ip-group input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 0.82rem;
+      width: 170px;
+    }
+    .ip-group input:focus { outline: none; border-color: var(--blue); }
+    .btn-sm {
+      background: var(--blue);
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-sm:hover { opacity: 0.85; }
+
+    /* Uptime pill */
+    #uptime-pill {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Alert Banner ─────────────────────────────────────────────── */
+    #alert-banner {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 24px;
+      background: linear-gradient(90deg, #3b0a0a, #200000);
+      border-bottom: 1px solid #6b1c1c;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #ffa0a0;
+      animation: pulse-border 1.4s ease-in-out infinite;
+    }
+    #alert-banner.show { display: flex; }
+    @keyframes pulse-border {
+      0%, 100% { border-bottom-color: #6b1c1c; }
+      50%       { border-bottom-color: var(--red); }
+    }
+    .alert-icon { font-size: 1.4rem; animation: shake 0.5s ease-in-out infinite alternate; }
+    @keyframes shake {
+      from { transform: rotate(-8deg); }
+      to   { transform: rotate(8deg); }
+    }
+
+    /* ── Main Grid ────────────────────────────────────────────────── */
+    main {
+      padding: 22px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    /* Status row */
+    #status-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      letter-spacing: 0.5px;
+      transition: all 0.4s;
+    }
+    .status-chip.ok      { border-color: var(--green);  color: var(--green);  background: rgba(63,185,80,0.1); }
+    .status-chip.warn    { border-color: var(--yellow); color: var(--yellow); background: rgba(210,153,34,0.12); }
+    .status-chip.alert   { border-color: var(--red);    color: var(--red);    background: rgba(248,81,73,0.12); }
+    .status-chip.neutral { border-color: var(--blue);   color: var(--blue);   background: rgba(88,166,255,0.10); }
+
+    /* ── Metric Cards ─────────────────────────────────────────────── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: border-color 0.4s, box-shadow 0.4s;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.4s;
+      pointer-events: none;
+    }
+    .card.alert-glow::before { background: radial-gradient(ellipse at top left, rgba(248,81,73,0.12), transparent 70%); opacity: 1; }
+    .card.warn-glow::before  { background: radial-gradient(ellipse at top left, rgba(210,153,34,0.12), transparent 70%); opacity: 1; }
+    .card.ok-glow::before    { background: radial-gradient(ellipse at top left, rgba(63,185,80,0.08), transparent 70%); opacity: 1; }
+
+    .card-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+    }
+    .card-value {
+      font-size: 2rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      transition: color 0.4s;
+    }
+    .card-unit {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: -4px;
+    }
+    .card-sub {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* Temperature range indicator */
+    .temp-range-bar {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--border);
+      margin-top: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+    .temp-range-fill {
+      position: absolute;
+      left: 0; top: 0; height: 100%;
+      border-radius: 3px;
+      transition: width 0.6s ease, background 0.6s ease;
+    }
+    .temp-markers {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    /* Gauge SVG cards */
+    .gauge-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .gauge-wrap {
+      position: relative;
+      width: 120px;
+      height: 70px;
+      overflow: hidden;
+    }
+    .gauge-wrap svg { width: 120px; height: 140px; }
+    .gauge-overlay {
+      position: absolute;
+      bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      font-size: 1.3rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Chart Section ────────────────────────────────────────────── */
+    .chart-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 700px) { .chart-row { grid-template-columns: 1fr; } }
+
+    .chart-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+    }
+    .chart-panel h3 {
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    .chart-container { position: relative; height: 200px; }
+
+    /* ── History Table ────────────────────────────────────────────── */
+    .history-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+    }
+    .history-panel h3 {
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .download-link {
+      font-size: 0.75rem;
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .download-link:hover { text-decoration: underline; }
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      font-variant-numeric: tabular-nums;
+    }
+    thead th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr {
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background 0.15s;
+    }
+    tbody tr:hover { background: rgba(255,255,255,0.03); }
+    tbody tr:last-child { border-bottom: none; }
+    td { padding: 9px 12px; }
+    .alert-cell { color: var(--red); font-weight: 600; }
+    .ok-cell    { color: var(--green); }
+
+    /* ── Bottom Info ──────────────────────────────────────────────── */
+    .info-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .info-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      font-size: 0.85rem;
+    }
+    .info-card h4 {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .info-row-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .info-row-item:last-child { border-bottom: none; }
+    .info-label  { color: var(--muted); font-size: 0.80rem; }
+    .info-value  { font-weight: 600; }
+
+    /* Camera heartbeat dot */
+    .cam-dot {
+      display: inline-block;
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: var(--muted);
+      margin-right: 6px;
+      vertical-align: middle;
+      transition: all 0.4s;
+    }
+    .cam-dot.live { background: var(--green); box-shadow: 0 0 8px var(--green); animation: blink 1.5s ease-in-out infinite; }
+    .cam-dot.dead { background: var(--red); }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    /* Last updated */
+    #last-update {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      header { padding: 12px 16px; }
+      main   { padding: 14px 16px; }
+      .card-value { font-size: 1.6rem; }
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 18px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Top Bar ───────────────────────────────────────────────────── -->
+<header>
+  <h1>
+    <span class="logo-icon">❄️</span>
+    PCM Cold-Store Monitor &nbsp;·&nbsp; SIH 26005
+  </h1>
+  <div class="header-right">
+    <div class="ip-group">
+      <label for="esp-ip">ESP32 IP:</label>
+      <input id="esp-ip" type="text" placeholder="192.168.x.x or 192.168.4.1" value="" />
+      <button class="btn-sm" onclick="applyIp()">Connect</button>
+    </div>
+    <div id="conn-badge">
+      <span id="conn-dot"></span>
+      <span id="conn-text">Not connected</span>
+    </div>
+    <span id="uptime-pill">Uptime: --</span>
+  </div>
+</header>
+
+<!-- ── Alert Banner ──────────────────────────────────────────────── -->
+<div id="alert-banner">
+  <span class="alert-icon">⚠️</span>
+  <span id="alert-text">--</span>
+</div>
+
+<!-- ── Main ──────────────────────────────────────────────────────── -->
+<main>
+
+  <!-- Status + last update -->
+  <div id="status-row">
+    <span class="status-chip neutral" id="status-chip">
+      <span class="spinner"></span>&nbsp; Waiting for ESP32…
+    </span>
+    <span id="last-update">Last update: never</span>
+  </div>
+
+  <!-- Primary metric cards -->
+  <div class="cards-grid">
+
+    <!-- Storage temp (DS18B20) -->
+    <div class="card" id="card-temp" style="grid-column: span 2; max-width: 380px;">
+      <div class="card-label">🌡️ Storage Temperature (DS18B20)</div>
+      <div class="card-value" id="val-temp">--</div>
+      <div class="card-unit">°C &nbsp;—&nbsp; PCM cold-store reference sensor</div>
+      <div class="temp-range-bar"><div class="temp-range-fill" id="temp-fill"></div></div>
+      <div class="temp-markers">
+        <span>0°C</span><span style="color:var(--green)">6°</span>
+        <span style="color:var(--green)">10°</span><span style="color:var(--yellow)">12°</span>
+        <span style="color:var(--red)">13°C</span>
+      </div>
+    </div>
+
+    <!-- DHT22 Temp -->
+    <div class="card" id="card-dht">
+      <div class="card-label">🌡️ Ambient Temp (DHT22)</div>
+      <div class="card-value" id="val-dht">--</div>
+      <div class="card-unit">°C</div>
+      <div class="card-sub" id="sub-dht">Ambient cross-reference</div>
+    </div>
+
+    <!-- Humidity -->
+    <div class="card" id="card-hum">
+      <div class="card-label">💧 Relative Humidity</div>
+      <div class="card-value" id="val-hum">--</div>
+      <div class="card-unit">%</div>
+      <div class="card-sub" id="sub-hum">DHT22 sensor</div>
+    </div>
+
+    <!-- Voltage -->
+    <div class="card" id="card-volt">
+      <div class="card-label">⚡ System Voltage (INA219)</div>
+      <div class="card-value" id="val-volt">--</div>
+      <div class="card-unit">V</div>
+      <div class="card-sub" id="sub-volt">Threshold: &lt; 4.75 V = LOW</div>
+    </div>
+
+    <!-- Current -->
+    <div class="card" id="card-curr">
+      <div class="card-label">〰️ Current</div>
+      <div class="card-value" id="val-curr">--</div>
+      <div class="card-unit">mA</div>
+      <div class="card-sub">INA219 bus current</div>
+    </div>
+
+    <!-- Power -->
+    <div class="card" id="card-pwr">
+      <div class="card-label">🔋 Power</div>
+      <div class="card-value" id="val-pwr">--</div>
+      <div class="card-unit">mW</div>
+      <div class="card-sub">INA219 measured power</div>
+    </div>
+
+  </div>
+
+  <!-- Charts -->
+  <div class="chart-row">
+    <div class="chart-panel">
+      <h3>📈 Temperature Trend (live)</h3>
+      <div class="chart-container">
+        <canvas id="chart-temp"></canvas>
+      </div>
+    </div>
+    <div class="chart-panel">
+      <h3>💧 Humidity Trend (live)</h3>
+      <div class="chart-container">
+        <canvas id="chart-hum"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Power chart -->
+  <div class="chart-panel">
+    <h3>⚡ Voltage · Current · Power (live)</h3>
+    <div class="chart-container">
+      <canvas id="chart-power"></canvas>
+    </div>
+  </div>
+
+  <!-- Bottom info cards -->
+  <div class="info-row">
+
+    <!-- Device status -->
+    <div class="info-card">
+      <h4>Device Status</h4>
+      <div class="info-row-item">
+        <span class="info-label">Mode</span>
+        <span class="info-value" id="info-mode">--</span>
+      </div>
+      <div class="info-row-item">
+        <span class="info-label">Uptime</span>
+        <span class="info-value" id="info-uptime">--</span>
+      </div>
+      <div class="info-row-item">
+        <span class="info-label">Sample interval</span>
+        <span class="info-value">10 s</span>
+      </div>
+    </div>
+
+    <!-- Camera node -->
+    <div class="info-card">
+      <h4>Camera Node (ESP32-CAM)</h4>
+      <div class="info-row-item">
+        <span class="info-label">Heartbeat</span>
+        <span class="info-value"><span class="cam-dot" id="cam-dot"></span><span id="cam-text">unknown</span></span>
+      </div>
+      <div class="info-row-item">
+        <span class="info-label">Protocol</span>
+        <span class="info-value">UART2 @ 115200 baud</span>
+      </div>
+      <div class="info-row-item">
+        <span class="info-label">Timeout</span>
+        <span class="info-value">60 s silence → inactive</span>
+      </div>
+    </div>
+
+    <!-- Temperature legend -->
+    <div class="info-card">
+      <h4>Temperature Zones</h4>
+      <div class="info-row-item">
+        <span class="info-label" style="color:var(--red)">High-temp alert</span>
+        <span class="info-value">≥ 13 °C</span>
+      </div>
+      <div class="info-row-item">
+        <span class="info-label" style="color:var(--orange)">Transition / watch</span>
+        <span class="info-value">12 – 13 °C</span>
+      </div>
+      <div class="info-row-item">
+        <span class="info-label" style="color:var(--yellow)">Upper range</span>
+        <span class="info-value">10 – 12 °C</span>
+      </div>
+      <div class="info-row-item">
+        <span class="info-label" style="color:var(--green)">Target range</span>
+        <span class="info-value">6 – 10 °C</span>
+      </div>
+      <div class="info-row-item">
+        <span class="info-label" style="color:var(--blue)">Cooling protect</span>
+        <span class="info-value">&lt; 6 °C</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- History table -->
+  <div class="history-panel">
+    <h3>
+      <span>📋 Sensor History (last 24 readings)</span>
+      <a class="download-link" id="download-link" href="#" target="_blank">⬇ Download CSV</a>
+    </h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Uptime</th>
+            <th>Storage °C</th>
+            <th>Humidity %</th>
+            <th>Voltage V</th>
+            <th>Current mA</th>
+            <th>Alert</th>
+          </tr>
+        </thead>
+        <tbody id="history-body">
+          <tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px">
+            No history yet — connect to ESP32 first
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  SIH 2026 · PS 26005 · PCM passive cold-store monitoring · DS18B20 is the control reference sensor ·
+  Dashboard fetches live data from ESP32 every 3 s
+</footer>
+
+<script>
+// ── Configuration ──────────────────────────────────────────────────
+const POLL_MS = 3000;
+const HISTORY_POLL_MS = 15000;
+const CHART_POINTS = 40;
+
+let BASE_URL = '';          // set by applyIp()
+let pollTimer = null;
+let historyTimer = null;
+let pollCount = 0;
+let consecutiveErrors = 0;
+
+// ── Persistent IP from localStorage ────────────────────────────────
+(function () {
+  const saved = localStorage.getItem('esp32_ip');
+  if (saved) {
+    document.getElementById('esp-ip').value = saved;
+    setTimeout(applyIp, 400);
+  }
+})();
+
+function applyIp() {
+  let ip = document.getElementById('esp-ip').value.trim();
+  if (!ip) { alert('Please enter the ESP32 IP address (shown in Serial Monitor on boot).'); return; }
+  if (!ip.startsWith('http')) ip = 'http://' + ip;
+  ip = ip.replace(/\/$/, '');
+  BASE_URL = ip;
+  localStorage.setItem('esp32_ip', document.getElementById('esp-ip').value.trim());
+  document.getElementById('download-link').href = BASE_URL + '/api/history';
+  setConnState('connecting');
+  restartPolling();
+}
+
+// ── Connection state ───────────────────────────────────────────────
+function setConnState(state) {
+  const dot  = document.getElementById('conn-dot');
+  const text = document.getElementById('conn-text');
+  dot.className = '';
+  if (state === 'connected')    { dot.classList.add('connected');    text.textContent = 'Live'; }
+  else if (state === 'disconnected') { dot.classList.add('disconnected'); text.textContent = 'Offline'; }
+  else                           { text.textContent = 'Connecting…'; }
+}
+
+// ── Charts setup ───────────────────────────────────────────────────
+const chartDefaults = {
+  animation: false,
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { labels: { color: '#8b949e', font: { size: 11 } } },
+    tooltip: { mode: 'index', intersect: false }
+  },
+  scales: {
+    x: { ticks: { color: '#8b949e', maxTicksLimit: 8, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+    y: { ticks: { color: '#8b949e', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+  },
+  elements: { point: { radius: 2, hoverRadius: 5 }, line: { tension: 0.35, borderWidth: 2 } }
+};
+
+function makeChart(id, datasets, yLabel, yMin, yMax) {
+  const ctx = document.getElementById(id).getContext('2d');
+  return new Chart(ctx, {
+    type: 'line',
+    data: { labels: [], datasets },
+    options: {
+      ...JSON.parse(JSON.stringify(chartDefaults)),
+      scales: {
+        x: chartDefaults.scales.x,
+        y: {
+          ...chartDefaults.scales.y,
+          title: { display: !!yLabel, text: yLabel, color: '#8b949e', font: { size: 10 } },
+          ...(yMin !== undefined ? { min: yMin } : {}),
+          ...(yMax !== undefined ? { suggestedMax: yMax } : {})
+        }
+      }
+    }
+  });
+}
+
+const tempChart = makeChart('chart-temp', [
+  { label: 'DS18B20 (°C)', data: [], borderColor: '#58a6ff', backgroundColor: 'rgba(88,166,255,0.10)' },
+  { label: 'DHT22 (°C)',   data: [], borderColor: '#a371f7', backgroundColor: 'rgba(163,113,247,0.08)', borderDash: [4,3] }
+], '°C', -5, 20);
+
+const humChart = makeChart('chart-hum', [
+  { label: 'Humidity (%)', data: [], borderColor: '#79c0ff', backgroundColor: 'rgba(121,192,255,0.10)' }
+], '%', 0, 100);
+
+const powerChart = makeChart('chart-power', [
+  { label: 'Voltage (V)',  data: [], borderColor: '#3fb950', backgroundColor: 'rgba(63,185,80,0.08)',  yAxisID: 'yV' },
+  { label: 'Current (mA)', data: [], borderColor: '#f0883e', backgroundColor: 'rgba(240,136,62,0.08)', yAxisID: 'ymA' },
+  { label: 'Power (mW)',   data: [], borderColor: '#d29922', backgroundColor: 'rgba(210,153,34,0.08)', yAxisID: 'ymW' }
+], null);
+
+// Multi-axis for power chart
+powerChart.options.scales = {
+  x:   { ...JSON.parse(JSON.stringify(chartDefaults.scales.x)) },
+  yV:  { type:'linear', position:'left',  ticks:{color:'#3fb950',font:{size:10}}, grid:{color:'rgba(255,255,255,0.04)'}, title:{display:true,text:'V',  color:'#3fb950',font:{size:10}} },
+  ymA: { type:'linear', position:'right', ticks:{color:'#f0883e',font:{size:10}}, grid:{drawOnChartArea:false},          title:{display:true,text:'mA', color:'#f0883e',font:{size:10}} },
+  ymW: { type:'linear', position:'right', ticks:{color:'#d29922',font:{size:10}}, grid:{drawOnChartArea:false},          title:{display:true,text:'mW', color:'#d29922',font:{size:10}}, offset: true }
+};
+powerChart.update();
+
+function pushChart(chart, label, ...values) {
+  chart.data.labels.push(label);
+  values.forEach((v, i) => chart.data.datasets[i].data.push(v));
+  if (chart.data.labels.length > CHART_POINTS) {
+    chart.data.labels.shift();
+    chart.data.datasets.forEach(d => d.data.shift());
+  }
+  chart.update('none');
+}
+
+// ── Value helpers ──────────────────────────────────────────────────
+function fmt(v, dec = 1) {
+  if (v === null || v === undefined || isNaN(v)) return 'ERR';
+  return Number(v).toFixed(dec);
+}
+
+function tempColor(c) {
+  if (c === null) return 'var(--muted)';
+  if (c < 6)    return 'var(--blue)';
+  if (c <= 10)  return 'var(--green)';
+  if (c <= 12)  return 'var(--yellow)';
+  if (c < 13)   return 'var(--orange)';
+  return 'var(--red)';
+}
+
+function tempBarWidth(c) {
+  // Map -5…18 → 0…100 %
+  if (c === null) return '0%';
+  const pct = Math.min(100, Math.max(0, ((c + 5) / 23) * 100));
+  return pct.toFixed(1) + '%';
+}
+
+function tempBarColor(c) {
+  if (c < 6)   return 'var(--blue)';
+  if (c <= 10) return 'var(--green)';
+  if (c <= 12) return 'var(--yellow)';
+  if (c < 13)  return 'var(--orange)';
+  return 'var(--red)';
+}
+
+function voltColor(v) {
+  if (v === null) return 'var(--muted)';
+  return v < 4.75 ? 'var(--red)' : 'var(--green)';
+}
+
+function fmtUptime(s) {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${h}h ${m}m ${sec}s`;
+}
+
+function timeLabel() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+// ── Status chip ────────────────────────────────────────────────────
+function setStatusChip(status, alert) {
+  const chip = document.getElementById('status-chip');
+  chip.innerHTML = status;
+  chip.className = 'status-chip';
+  const a = (alert || '').toUpperCase();
+  if (a === 'NONE' || a === '') {
+    chip.classList.add(status === 'TARGET RANGE' ? 'ok' : 'neutral');
+  } else if (a.includes('WATCH') || a.includes('FAULT')) {
+    chip.classList.add('warn');
+  } else {
+    chip.classList.add('alert');
+  }
+}
+
+// ── Apply reading to DOM ───────────────────────────────────────────
+function applyReading(d) {
+  const t  = d.storage_temp_c;
+  const dh = d.dht_temp_c;
+  const hu = d.humidity_pct;
+  const v  = d.system_voltage_v;
+  const i  = d.current_ma;
+  const pw = d.power_mw;
+
+  // Temperature
+  const tEl = document.getElementById('val-temp');
+  tEl.textContent = t !== null ? fmt(t, 2) : 'ERR';
+  tEl.style.color = tempColor(t);
+  document.getElementById('temp-fill').style.width  = tempBarWidth(t);
+  document.getElementById('temp-fill').style.background = t !== null ? tempBarColor(t) : 'var(--muted)';
+  applyCardGlow('card-temp', t, v);
+
+  // DHT22
+  document.getElementById('val-dht').textContent = dh !== null ? fmt(dh, 2) : 'ERR';
+  document.getElementById('val-dht').style.color  = dh !== null ? tempColor(dh) : 'var(--red)';
+  document.getElementById('sub-dht').textContent  = dh !== null ? 'Ambient cross-reference' : 'Sensor fault / not responding';
+
+  // Humidity
+  document.getElementById('val-hum').textContent = hu !== null ? fmt(hu, 1) : 'ERR';
+  document.getElementById('val-hum').style.color  = hu !== null ? 'var(--cyan)' : 'var(--red)';
+  document.getElementById('sub-hum').textContent  = hu !== null ? `DHT22 sensor` : 'Sensor fault';
+
+  // Voltage
+  document.getElementById('val-volt').textContent = v !== null ? fmt(v, 2) : 'ERR';
+  document.getElementById('val-volt').style.color  = voltColor(v);
+  document.getElementById('sub-volt').textContent  = v !== null
+    ? (v < 4.75 ? '⚠ Below 4.75 V threshold' : '✓ System voltage nominal')
+    : 'INA219 not available';
+
+  // Current
+  document.getElementById('val-curr').textContent = i !== null ? fmt(i, 0) : 'ERR';
+  document.getElementById('val-curr').style.color  = i !== null ? 'var(--orange)' : 'var(--red)';
+
+  // Power
+  document.getElementById('val-pwr').textContent = pw !== null ? fmt(pw, 0) : 'ERR';
+  document.getElementById('val-pwr').style.color  = pw !== null ? 'var(--yellow)' : 'var(--red)';
+
+  // Status chip + alert banner
+  setStatusChip(d.status, d.alert);
+  const banner = document.getElementById('alert-banner');
+  if (d.alert && d.alert !== 'NONE') {
+    document.getElementById('alert-text').textContent = d.alert;
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+
+  // Camera
+  const cam = d.camera_heartbeat;
+  const camDot = document.getElementById('cam-dot');
+  camDot.className = 'cam-dot ' + (cam ? 'live' : 'dead');
+  document.getElementById('cam-text').textContent = cam ? 'Heartbeat active' : 'No heartbeat';
+
+  // Info cards
+  document.getElementById('info-mode').textContent   = d.wifi_mode === 'AP' ? 'Access Point (fallback)' : 'Station (connected)';
+  document.getElementById('info-uptime').textContent = fmtUptime(d.uptime_s);
+  document.getElementById('uptime-pill').textContent = 'Uptime: ' + fmtUptime(d.uptime_s);
+
+  // Charts
+  const lbl = timeLabel();
+  pushChart(tempChart, lbl, t !== null ? t : null, dh !== null ? dh : null);
+  pushChart(humChart,  lbl, hu !== null ? hu : null);
+  pushChart(powerChart, lbl, v !== null ? v : null, i !== null ? i : null, pw !== null ? pw : null);
+
+  // Last update
+  document.getElementById('last-update').textContent = 'Last update: ' + new Date().toLocaleTimeString();
+}
+
+function applyCardGlow(id, temp, volt) {
+  const card = document.getElementById(id);
+  card.className = 'card';
+  if (temp === null) return;
+  if (temp >= 13) card.classList.add('alert-glow');
+  else if (temp > 10) card.classList.add('warn-glow');
+  else card.classList.add('ok-glow');
+}
+
+// ── Fetch readings ─────────────────────────────────────────────────
+async function fetchReadings() {
+  if (!BASE_URL) return;
+  try {
+    const res = await fetch(BASE_URL + '/api/readings', { cache: 'no-store', signal: AbortSignal.timeout(4000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    consecutiveErrors = 0;
+    setConnState('connected');
+    applyReading(data);
+    pollCount++;
+  } catch (e) {
+    consecutiveErrors++;
+    if (consecutiveErrors >= 2) setConnState('disconnected');
+    document.getElementById('status-chip').className = 'status-chip warn';
+    document.getElementById('status-chip').textContent = 'Dashboard connection lost — retrying…';
+    console.warn('Fetch error:', e.message);
+  }
+}
+
+// ── Fetch + render history ─────────────────────────────────────────
+async function fetchHistory() {
+  if (!BASE_URL) return;
+  try {
+    const res = await fetch(BASE_URL + '/api/history', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return;
+    const csv = await res.text();
+    renderHistory(csv);
+  } catch (e) {
+    console.warn('History fetch error:', e.message);
+  }
+}
+
+function renderHistory(csv) {
+  const lines = csv.trim().split('\n').filter(l => l.trim());
+  if (lines.length < 2) return;
+  // Skip header row
+  const rows = lines.slice(1).reverse(); // newest first
+  const tbody = document.getElementById('history-body');
+  tbody.innerHTML = '';
+
+  rows.forEach(line => {
+    const [uptime, temp, hum, volt, curr, alert] = line.split(',');
+    const tr = document.createElement('tr');
+    const alertClass = (alert && alert.trim() !== 'NONE') ? 'alert-cell' : 'ok-cell';
+    tr.innerHTML = `
+      <td>${escHtml(uptime  || '--')}</td>
+      <td>${escHtml(temp    || '--')}</td>
+      <td>${escHtml(hum     || '--')}</td>
+      <td>${escHtml(volt    || '--')}</td>
+      <td>${escHtml(curr    || '--')}</td>
+      <td class="${alertClass}">${escHtml((alert || '--').trim())}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Polling control ────────────────────────────────────────────────
+function restartPolling() {
+  if (pollTimer)    clearInterval(pollTimer);
+  if (historyTimer) clearInterval(historyTimer);
+  fetchReadings();
+  fetchHistory();
+  pollTimer    = setInterval(fetchReadings,  POLL_MS);
+  historyTimer = setInterval(fetchHistory,   HISTORY_POLL_MS);
+}
+</script>
+
+</body>
+</html>
