@@ -79,6 +79,12 @@ Agricultural communities across the North Eastern Region (NER) face severe post-
 
 ## 3. System Architecture
 
+<p align="center">
+  <img src="images/prototype/sheetal_prototype_render.jpg" alt="SHEETAL Prototype Cutaway Architecture" width="100%">
+  <br>
+  <em>Figure 1: Isometric engineering cutaway of SHEETAL — showing 100 mm PUF insulated chamber, ventilated vegetable crates, overhead evaporator and 25 kg PCM thermal buffer cassettes, IP65 ESP32 supervisory controller, 48 V LiFePO4 battery pack, and solar PV interface.</em>
+</p>
+
 ```
 Solar Energy (1.65 kWp PV Array)
        │
