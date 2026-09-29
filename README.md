@@ -65,7 +65,7 @@ Agricultural communities across the North Eastern Region (NER) face severe post-
                          ┌───────────────────────────┐
                          │       SOLAR ENERGY        │
                          │   PV → MPPT → LiFePO₄     │
-                         │   Off-grid energy supply   │
+                         │   Off-grid energy supply  │
                          └───────────────────────────┘
 ```
 
