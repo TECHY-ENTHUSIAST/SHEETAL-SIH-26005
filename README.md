@@ -80,9 +80,9 @@ Agricultural communities across the North Eastern Region (NER) face severe post-
 ## 3. System Architecture
 
 <p align="center">
-  <img src="images/prototype/sheetal_prototype_render.jpg" alt="SHEETAL Prototype Cutaway Architecture" width="100%">
+  <img src="images/prototype/sheetal_wall_pcm_render.jpg" alt="SHEETAL Prototype Wall-Distributed PCM Architecture" width="100%">
   <br>
-  <em>Figure 1: Isometric engineering cutaway of SHEETAL — showing 100 mm PUF insulated chamber, ventilated vegetable crates, overhead evaporator and 25 kg PCM thermal buffer cassettes, IP65 ESP32 supervisory controller, 48 V LiFePO4 battery pack, and solar PV interface.</em>
+  <em>Figure 1: Isometric engineering cutaway of SHEETAL — showing 100 mm PUF insulated chamber, ventilated vegetable crates, interior perimeter wall-distributed PCM thermal buffer jacket, ceiling evaporator with dual circulation fans, IP65 ESP32 supervisory controller, 48 V LiFePO4 battery pack, and solar PV array.</em>
 </p>
 
 ```
@@ -153,8 +153,12 @@ The supervisory firmware applies strict threshold boundaries on storage temperat
 ---
 
 ## 6. Phase Change Material (PCM) Thermal Buffer
-
+ 
 - **Role:** Acts as a passive latent-heat battery. During sunlight hours, excess cooling solidifies the PCM. When the compressor shuts off or solar power is lost, the melting PCM absorbs wall heat leakage at a steady 10°C, holding produce safe without drawing electrical power.
+- **Perimeter Wall-Integrated Architecture:** Rather than concentrating all PCM mass near the overhead fan plenum, modular slim-profile PCM cassettes line the **interior perimeter walls (side and rear walls)** of the storage chamber:
+  - **Direct Boundary Interception:** Conduction heat leaking across the 100 mm PUF envelope ($U \cdot A \cdot \Delta T$) hits the perimeter PCM jacket *first* before reaching produce or internal chamber air.
+  - **Enhanced Heat Transfer Area ($A$):** Distributing the PCM mass into high-aspect-ratio wall cassettes increases the effective convective and conductive surface area by $>300\%$, overcoming the low thermal conductivity of inorganic salt hydrates and achieving faster charging and discharging heat exchange rates.
+  - **Natural Convective Circulation:** During compressor off-cycles or power outages when fans stop, dense cold air sinks along the perimeter PCM walls, establishing a natural convective cooling loop through the ventilated crates to prevent hotspots and temperature stratification.
 - **PCM Specification:** Inorganic Salt Hydrate (Pluss savE® HS10 / IP08).
 - **Nominal Phase Transition Temperature:** **10.0°C** (Phase change range: 8.0°C–12.0°C).
 - **Latent Heat of Fusion ($L$):** $\approx 180\text{ kJ/kg}$ (Evidence-based from manufacturer datasheet).
