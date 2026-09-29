@@ -81,7 +81,7 @@ Agricultural communities across the North Eastern Region (NER) face severe post-
 
 <p align="center">
   <img src="https://github.com/TECHY-ENTHUSIAST/SHEETAL-SIH-26005/blob/main/images/prototype/sheetal_two_panels_1790679564701.jpg?raw=true" />
-" alt="SHEETAL Prototype Wall-Distributed PCM Architecture" width="100%">
+
   <br>
   <em>Figure 1: Isometric engineering cutaway of SHEETAL — showing 100 mm PUF insulated chamber, ventilated vegetable crates, interior perimeter wall-distributed PCM thermal buffer jacket, ceiling evaporator with dual circulation fans, IP65 ESP32 supervisory controller, 48 V LiFePO4 battery pack, and solar PV array.</em>
 </p>
