@@ -44,13 +44,29 @@ Agricultural communities across the North Eastern Region (NER) face severe post-
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│                             QUAD-BUFFER SYSTEM ARCHITECTURE                                 │
+│                         SHEETAL — QUAD-BUFFER SYSTEM ARCHITECTURE                           │
 ├─────────────────────┬─────────────────────┬─────────────────────┬───────────────────────────┤
 │ 1. ACTIVE COOLING   │ 2. THERMAL BUFFER   │ 3. ELECTRICAL BUFFER│ 4. SUPERVISORY CONTROL    │
-│ R290 Hermetic Loop  │ 50 kg Salt Hydrate  │ 48V 100Ah LiFePO4   │ ESP32 Dual-Core Controller│
-│ Vapor Compression   │ Latent Heat Storage │ 4.8 kWh Battery     │ Closed-loop monitoring,   │
-│ (COP ≈ 2.0)         │ (~1.25 kWh_th)      │ Off-grid autonomy   │ logging & local dashboard │
+│ R290 Refrigeration  │ Salt-Hydrate PCM    │ 51.2 V 100 Ah       │ ESP32-WROOM-32            │
+│ Hermetic Compressor │ Latent Heat Storage │ LiFePO₄ Battery     │ Closed-loop monitoring,   │
+│ Vapor-Compression   │ Target: ~50 kg      │ 5.12 kWh nominal    │ data logging, alarms &    │
+│ System              │ PCM thermal buffer  │ energy storage      │ local Wi-Fi dashboard     │
 └─────────────────────┴─────────────────────┴─────────────────────┴───────────────────────────┘
+                                      │
+                                      ▼
+                         ┌───────────────────────────┐
+                         │   INSULATED COLD CHAMBER  │
+                         │   ~200 kg Fresh Produce   │
+                         │   8 × HDPE Crates         │
+                         │   Target: ~8 °C           │
+                         └───────────────────────────┘
+                                      │
+                                      ▼
+                         ┌───────────────────────────┐
+                         │       SOLAR ENERGY        │
+                         │   PV → MPPT → LiFePO₄     │
+                         │   Off-grid energy supply   │
+                         └───────────────────────────┘
 ```
 
 ### Core Operating Principles:
