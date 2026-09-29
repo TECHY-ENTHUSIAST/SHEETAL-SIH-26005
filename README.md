@@ -3,7 +3,7 @@
 ### Solar-Powered Smart Cold Storage System for Fresh Produce
 
 **Smart India Hackathon 2026 — Hardware Edition**  
-**Problem Statement ID:** PS 26005  
+**Problem Statement ID:** SIH26005  
 **Problem Title:** Solar-Powered Smart Mini Cold Storage System for Fresh Vegetables in North Eastern Region (NER)  
 **Nodal Ministry:** Ministry of Development of North Eastern Region (MDoNER)  
 **Theme:** Agriculture / FoodTech / Rural Development  
