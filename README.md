@@ -47,7 +47,7 @@ Agricultural communities across the North Eastern Region (NER) face severe post-
 │                             QUAD-BUFFER SYSTEM ARCHITECTURE                                 │
 ├─────────────────────┬─────────────────────┬─────────────────────┬───────────────────────────┤
 │ 1. ACTIVE COOLING   │ 2. THERMAL BUFFER   │ 3. ELECTRICAL BUFFER│ 4. SUPERVISORY CONTROL    │
-│ R290 Hermetic Loop  │ 25 kg Salt Hydrate  │ 48V 100Ah LiFePO4   │ ESP32 Dual-Core Controller│
+│ R290 Hermetic Loop  │ 50 kg Salt Hydrate  │ 48V 100Ah LiFePO4   │ ESP32 Dual-Core Controller│
 │ Vapor Compression   │ Latent Heat Storage │ 4.8 kWh Battery     │ Closed-loop monitoring,   │
 │ (COP ≈ 2.0)         │ (~1.25 kWh_th)      │ Off-grid autonomy   │ logging & local dashboard │
 └─────────────────────┴─────────────────────┴─────────────────────┴───────────────────────────┘
@@ -73,7 +73,7 @@ Power Management (48V MPPT Charge Controller + 48V LiFePO4 Battery + Inverter)
 Cold Storage Refrigeration Loop (R290 Vapor-Compression Unit)
        │
        ▼
-PCM Thermal Buffer (25 kg Encapsulated Salt Hydrate Cassettes @ 10°C)
+PCM Thermal Buffer (50 kg Encapsulated Salt Hydrate Cassettes @ 10°C)
        │
        ▼
 Fresh Produce Storage Chamber (200 kg Produce / 1.44 m³ Insulated 100 mm PUF Envelope)
@@ -136,8 +136,8 @@ The supervisory firmware applies strict threshold boundaries on storage temperat
 - **PCM Specification:** Inorganic Salt Hydrate (Pluss savE® HS10 / IP08).
 - **Nominal Phase Transition Temperature:** **10.0°C** (Phase change range: 8.0°C–12.0°C).
 - **Latent Heat of Fusion ($L$):** $\approx 180\text{ kJ/kg}$ (Evidence-based from manufacturer datasheet).
-- **Calculated PCM Mass:** **25 kg** split across 10 modular HDPE cassettes (2.5 kg each).
-- **Stored Latent Thermal Capacity:** $25\text{ kg} \times 180\text{ kJ/kg} = 4,500\text{ kJ} \approx \mathbf{1.25\text{ kWh}_{\text{thermal}}}$.
+- **Calculated PCM Mass:** **50 kg** split across 20 modular HDPE cassettes (2.5 kg each).
+- **Stored Latent Thermal Capacity:** $50\text{ kg} \times 180\text{ kJ/kg} = 9,000\text{ kJ} \approx \mathbf{2.50\text{ kWh}_{\text{thermal}}}$.
 - **Buffering Duration:**
   $$\mathbf{24\text{ to }48\text{ Hours of Thermal Buffering}} \quad \longrightarrow \quad \textbf{[Design Target — Not Yet Experimentally Validated]}$$
 
@@ -205,7 +205,7 @@ The primary dashboard is hosted directly by the ESP32 microcontroller:
 - **Sensible Produce Pull-down Energy (200 kg, 30°C to 10°C):** $4.43\text{ kWh}_{\text{thermal}}$.
 - **Envelope Conduction Loss (100 mm PUF, 24 h):** $1.23\text{ kWh}_{\text{thermal}}$.
 - **Total Working Daily Thermal Load:** $6.30\text{ kWh}_{\text{thermal}}/\text{day}$.
-- **PCM Latent Thermal Energy Stored (25 kg):** $1.25\text{ kWh}_{\text{thermal}}$ ($4,500\text{ kJ}$).
+- **PCM Latent Thermal Energy Stored (50 kg):** $2.50\text{ kWh}_{\text{thermal}}$ ($9,000\text{ kJ}$).
 - **Battery Autonomy at 300 W equivalent load:** $\approx 11.5\text{ Hours}$ ($48\text{ V } 100\text{ Ah LiFePO}_4$).
 - **Minimum Required Solar PV Array:** $1.19\text{ kWp}$ (Practical selected array: $1.65\text{ kWp}$).
 
@@ -266,12 +266,10 @@ To replicate the supervisory monitoring electronics on an Arduino test bench:
 
 ## 13. Team & Institutional Information
 
-- **Institution:** `To be updated with official institutional details.`
-- **Team Name / ID:** `To be updated with team registration ID.`
-- **Faculty Mentor:** `To be updated.`
+- **Institution:** `Thakur Shree D.P.S College Of Engineering & Management`
+- **Team Name / ID:** `128664`
 
 ---
 
-## 14. License
 
-`License: To be decided.`
+
